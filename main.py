@@ -13,15 +13,12 @@ load_dotenv()
 # API Keys
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-KIMI_API_KEY = os.getenv("KIMI_API_KEY")
 
 # Validate API keys
 if not OPENROUTER_API_KEY:
     raise RuntimeError("❌ Missing OPENROUTER_API_KEY in environment variables.")
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("❌ Missing DEEPSEEK_API_KEY in environment variables.")
-if not KIMI_API_KEY:
-    raise RuntimeError("❌ Missing KIMI_API_KEY in environment variables.")
 
 # OpenRouter Client
 openai_client = OpenAI(
@@ -34,9 +31,6 @@ ollama_client = ollama.Client(host='https://ollama.com')
 
 # DeepSeek endpoint
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
-
-# Kimi endpoint (Moonshot API)
-KIMI_URL = "https://api.moonshot.cn/v1/chat/completions"
 
 # FastAPI App
 app = FastAPI(
@@ -112,39 +106,20 @@ async def deepseek_chat(request: ChatRequest):
 
 
 # ----------------------
-# Kimi Endpoint
+# Llama Endpoint (via OpenRouter)
 # ----------------------
-@app.post("/kimi")
-async def kimi_chat(request: ChatRequest):
+@app.post("/llama")
+async def llama_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
-        payload = {
-            "model": "moonshot-v1-8k",
-            "messages": messages
-        }
-        headers = {
-            "Authorization": f"Bearer {KIMI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        response = requests.post(KIMI_URL, headers=headers, json=payload, timeout=30)
-        
-        # 🛠 Debug log
-        print("Kimi Raw:", response.text)
-        
-        kimi_reply = response.json()
-        
-        if "choices" in kimi_reply and len(kimi_reply["choices"]) > 0:
-            reply_text = kimi_reply["choices"][0]["message"]["content"]
-            return {"reply": reply_text}
-        elif "error" in kimi_reply:
-            return {"reply": f"Kimi Error: {kimi_reply['error'].get('message', 'Unknown error')}"}
-        else:
-            return {"reply": f"Unexpected response format: {kimi_reply}"}
-            
-    except requests.exceptions.RequestException as e:
-        return {"reply": f"Network Error: {str(e)}"}
+        response = openai_client.chat.completions.create(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages=messages
+        )
+        reply = response.choices[0].message.content
+        return {"reply": reply}
     except Exception as e:
-        return {"reply": f"Parsing Error: {str(e)}"}
+        return {"reply": f"Llama Error: {str(e)}"}
 
 # ----------------------
 # Health Check
