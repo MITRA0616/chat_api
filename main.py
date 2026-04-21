@@ -79,7 +79,7 @@ async def gemini_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="google/gemma-2-9b-it:free",  # Using Gemma-2-9b (the common free one)
+            model="google/gemma-4-31b-it:free",
             messages=messages
         )
         reply = response.choices[0].message.content
