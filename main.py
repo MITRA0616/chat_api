@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import requests
+import time
 from dotenv import load_dotenv
 from openai import OpenAI
 import ollama
@@ -53,6 +54,25 @@ class ChatRequest(BaseModel):
     message: str
     history: list = []  # For ChatGPT conversation context
 
+# ── HELPER: CALL MODEL WITH RETRY ───────────────────────────────────────────
+def call_model_with_retry(client, model_id, messages, max_retries=3, delay=5):
+    """Calls OpenRouter with 429 retry logic."""
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=messages
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            err_msg = str(e)
+            if "429" in err_msg or "rate limit" in err_msg.lower():
+                print(f"⚠️ Rate limit (429) hit for {model_id}. Retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+                time.sleep(delay)
+                continue
+            raise e
+    raise Exception(f"Failed to call {model_id} after {max_retries} attempts.")
+
 # ----------------------
 # ChatGPT Endpoint
 # ----------------------
@@ -70,20 +90,35 @@ async def chatgpt_chat(request: ChatRequest):
         return {"reply": f"OpenRouter Error: {str(e)}"}
 
 # ----------------------
-# Gemini Endpoint (via OpenRouter)
+# Gemini Endpoint (Free Fallback Stack)
 # ----------------------
 @app.post("/gemini")
 async def gemini_chat(request: ChatRequest):
-    try:
-        messages = request.history + [{"role": "user", "content": request.message}]
-        response = openai_client.chat.completions.create(
-            model="nvidia/nemotron-3-super-120b-a12b:free",
-            messages=messages
-        )
-        reply = response.choices[0].message.content
-        return {"reply": reply}
-    except Exception as e:
-        return {"reply": f"Gemini (OpenRouter) Error: {str(e)}"}
+    if not openai_client:
+        return {"reply": "OpenRouter API Key not configured."}
+    
+    messages = request.history + [{"role": "user", "content": request.message}]
+    
+    # Model stack in order of stability/speed
+    models = [
+        "mistralai/mistral-7b-instruct:free",   # Primary
+        "meta-llama/llama-3-8b-instruct:free",  # Fallback
+        "nvidia/nemotron-3-super-120b-a12b:free" # Backup
+    ]
+
+    errors = []
+    
+    for model_id in models:
+        try:
+            print(f"🚀 Attempting {model_id}...")
+            reply = call_model_with_retry(openai_client, model_id, messages)
+            return {"reply": reply}
+        except Exception as e:
+            print(f"❌ {model_id} failed: {str(e)}")
+            errors.append(f"{model_id}: {str(e)}")
+            continue # Try next model in stack
+
+    return {"reply": f"🔥 All models failed. Errors:\n" + "\n".join(errors)}
         
 # ----------------------
 # Deepseek Endpoint (via Ollama)
