@@ -29,6 +29,9 @@ openai_client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
+# Ollama Client
+ollama_client = ollama.Client(host='https://ollama.com')
+
 # DeepSeek endpoint
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 
@@ -96,7 +99,7 @@ async def deepseek_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         
-        response = ollama.chat(
+        response = ollama_client.chat(
             model='deepseek-v3.2:cloud',
             messages=messages,
         )
