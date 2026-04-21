@@ -11,31 +11,23 @@ load_dotenv()
 
 # API Keys
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 KIMI_API_KEY = os.getenv("KIMI_API_KEY")
 
 # Validate API keys
 if not OPENROUTER_API_KEY:
     raise RuntimeError("❌ Missing OPENROUTER_API_KEY in environment variables.")
-if not GEMINI_API_KEY:
-    raise RuntimeError("❌ Missing GEMINI_API_KEY in environment variables.")
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("❌ Missing DEEPSEEK_API_KEY in environment variables.")
 if not KIMI_API_KEY:
     raise RuntimeError("❌ Missing KIMI_API_KEY in environment variables.")
 
-# OpenRouter Client (Alternative to OpenAI)
+# OpenRouter Client
 openai_client = OpenAI(
     api_key=OPENROUTER_API_KEY,
     base_url="https://openrouter.ai/api/v1",
 )
 
-# Gemini Endpoint
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1/models/"
-    f"gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
-)
 # DeepSeek endpoint
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 
@@ -80,31 +72,20 @@ async def chatgpt_chat(request: ChatRequest):
         return {"reply": f"OpenRouter Error: {str(e)}"}
 
 # ----------------------
-# Gemini Endpoint
+# Gemini Endpoint (via OpenRouter)
 # ----------------------
 @app.post("/gemini")
 async def gemini_chat(request: ChatRequest):
     try:
-        payload = {
-            "contents": [
-                {
-                    "parts": [{"text": request.message}]
-                }
-            ]
-        }
-        response = requests.post(GEMINI_URL, json=payload, timeout=30)
-        gemini_reply = response.json()
-
-        if "error" in gemini_reply:
-            return {"reply": f"Gemini Error: {gemini_reply['error'].get('message', 'Unknown error')}"}
-
-        reply_text = gemini_reply["candidates"][0]["content"]["parts"][0]["text"]
-        return {"reply": reply_text}
-
-    except requests.exceptions.RequestException as e:
-        return {"reply": f"Network Error: {str(e)}"}
-    except Exception:
-        return {"reply": "Sorry, could not parse Gemini's response."}
+        messages = request.history + [{"role": "user", "content": request.message}]
+        response = openai_client.chat.completions.create(
+            model="google/gemma-2-9b-it:free",  # Using Gemma-2-9b (the common free one)
+            messages=messages
+        )
+        reply = response.choices[0].message.content
+        return {"reply": reply}
+    except Exception as e:
+        return {"reply": f"Gemini (OpenRouter) Error: {str(e)}"}
         
 # ----------------------
 # Deepseek Endpoint
