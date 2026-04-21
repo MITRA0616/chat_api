@@ -5,32 +5,22 @@ import os
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
-import ollama
 
 # Load environment variables
 load_dotenv()
 
 # API Keys
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 # Validate API keys
 if not OPENROUTER_API_KEY:
     raise RuntimeError("❌ Missing OPENROUTER_API_KEY in environment variables.")
-if not DEEPSEEK_API_KEY:
-    raise RuntimeError("❌ Missing DEEPSEEK_API_KEY in environment variables.")
 
 # OpenRouter Client
 openai_client = OpenAI(
     api_key=OPENROUTER_API_KEY,
     base_url="https://openrouter.ai/api/v1",
 )
-
-# Ollama Client
-ollama_client = ollama.Client(host='https://ollama.com')
-
-# DeepSeek endpoint
-DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 
 # FastAPI App
 app = FastAPI(
@@ -101,26 +91,6 @@ async def qwen_chat(request: ChatRequest):
     except Exception as e:
         return {"reply": f"Qwen Error: {str(e)}"}
         
-# ----------------------
-# Deepseek Endpoint (via Ollama)
-# ----------------------
-@app.post("/deepseek")
-async def deepseek_chat(request: ChatRequest):
-    try:
-        messages = request.history + [{"role": "user", "content": request.message}]
-        
-        response = ollama_client.chat(
-            model='deepseek-v3.2:cloud',
-            messages=messages,
-        )
-        
-        reply_text = response['message']['content']
-        return {"reply": reply_text}
-
-    except Exception as e:
-        return {"reply": f"Ollama/DeepSeek Error: {str(e)}"}
-
-
 # ----------------------
 # Llama Endpoint (via OpenRouter)
 # ----------------------
