@@ -93,7 +93,7 @@ async def qwen_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="qwen/qwen3-next-80b-a3b-instruct:free",
+            model="qwen/qwen2.5-7b-instruct",
             messages=messages
         )
         reply = response.choices[0].message.content
