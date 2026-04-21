@@ -5,6 +5,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+import ollama
 
 # Load environment variables
 load_dotenv()
@@ -88,43 +89,23 @@ async def gemini_chat(request: ChatRequest):
         return {"reply": f"Gemini (OpenRouter) Error: {str(e)}"}
         
 # ----------------------
-# Deepseek Endpoint
+# Deepseek Endpoint (via Ollama)
 # ----------------------
 @app.post("/deepseek")
 async def deepseek_chat(request: ChatRequest):
     try:
-        payload = {
-            "model": "deepseek-chat",
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": request.message}
-            ],
-            "stream": False
-        }
+        messages = request.history + [{"role": "user", "content": request.message}]
+        
+        response = ollama.chat(
+            model='deepseek-v3.2:cloud',
+            messages=messages,
+        )
+        
+        reply_text = response['message']['content']
+        return {"reply": reply_text}
 
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        response = requests.post(DEEPSEEK_URL, json=payload, headers=headers, timeout=30)
-        deepseek_reply = response.json()
-
-        # 🛠 Debug log
-        print("DeepSeek Raw:", deepseek_reply)
-
-        if "choices" in deepseek_reply and len(deepseek_reply["choices"]) > 0:
-            reply_text = deepseek_reply["choices"][0]["message"]["content"]
-            return {"reply": reply_text}
-        elif "error" in deepseek_reply:
-            return {"reply": f"DeepSeek Error: {deepseek_reply['error'].get('message', 'Unknown error')}"}
-        else:
-            return {"reply": f"Unexpected response format: {deepseek_reply}"}
-
-    except requests.exceptions.RequestException as e:
-        return {"reply": f"Network Error: {str(e)}"}
     except Exception as e:
-        return {"reply": f"Parsing Error: {str(e)}"}
+        return {"reply": f"Ollama/DeepSeek Error: {str(e)}"}
 
 
 # ----------------------
