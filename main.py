@@ -113,7 +113,7 @@ async def llama_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="meta-llama/llama-3.3-70b-instruct:free",
+            model="meta-llama/llama-3-8b-instruct",
             messages=messages
         )
         reply = response.choices[0].message.content
