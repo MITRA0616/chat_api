@@ -10,22 +10,26 @@ from openai import OpenAI
 load_dotenv()
 
 # API Keys
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 KIMI_API_KEY = os.getenv("KIMI_API_KEY")
 
 # Validate API keys
-if not OPENAI_API_KEY:
-    raise RuntimeError("❌ Missing OPENAI_API_KEY in environment variables.")
+if not OPENROUTER_API_KEY:
+    raise RuntimeError("❌ Missing OPENROUTER_API_KEY in environment variables.")
 if not GEMINI_API_KEY:
     raise RuntimeError("❌ Missing GEMINI_API_KEY in environment variables.")
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("❌ Missing DEEPSEEK_API_KEY in environment variables.")
 if not KIMI_API_KEY:
     raise RuntimeError("❌ Missing KIMI_API_KEY in environment variables.")
-# OpenAI Client
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+# OpenRouter Client (Alternative to OpenAI)
+openai_client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1",
+)
 
 # Gemini Endpoint
 GEMINI_URL = (
@@ -67,13 +71,13 @@ async def chatgpt_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # or gpt-4o, gpt-3.5-turbo
+            model="openai/gpt-oss-120b:free",
             messages=messages
         )
         reply = response.choices[0].message.content
         return {"reply": reply}
     except Exception as e:
-        return {"reply": f"ChatGPT Error: {str(e)}"}
+        return {"reply": f"OpenRouter Error: {str(e)}"}
 
 # ----------------------
 # Gemini Endpoint
