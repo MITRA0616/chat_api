@@ -77,7 +77,7 @@ async def gemini_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="google/gemma-4-31b-it:free",
+            model="nvidia/nemotron-3-super-120b-a12b:free",
             messages=messages
         )
         reply = response.choices[0].message.content
