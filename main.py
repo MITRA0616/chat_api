@@ -13,6 +13,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+KIMI_API_KEY = os.getenv("KIMI_API_KEY")
 
 # Validate API keys
 if not OPENAI_API_KEY:
@@ -21,9 +22,17 @@ if not GEMINI_API_KEY:
     raise RuntimeError("❌ Missing GEMINI_API_KEY in environment variables.")
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("❌ Missing DEEPSEEK_API_KEY in environment variables.")
+if not KIMI_API_KEY:
+    raise RuntimeError("❌ Missing KIMI_API_KEY in environment variables.")
 
 # OpenAI Client
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Kimi Client (Moonshot API)
+kimi_client = OpenAI(
+    api_key=KIMI_API_KEY,
+    base_url="https://api.moonshot.cn/v1",
+)
 
 # Gemini Endpoint
 GEMINI_URL = (
@@ -136,6 +145,22 @@ async def deepseek_chat(request: ChatRequest):
     except Exception as e:
         return {"reply": f"Parsing Error: {str(e)}"}
 
+
+# ----------------------
+# Kimi Endpoint
+# ----------------------
+@app.post("/kimi")
+async def kimi_chat(request: ChatRequest):
+    try:
+        messages = request.history + [{"role": "user", "content": request.message}]
+        response = kimi_client.chat.completions.create(
+            model="moonshot-v1-8k",
+            messages=messages
+        )
+        reply = response.choices[0].message.content
+        return {"reply": reply}
+    except Exception as e:
+        return {"reply": f"Kimi Error: {str(e)}"}
 
 # ----------------------
 # Health Check
