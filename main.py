@@ -76,20 +76,20 @@ async def nemotron_chat(request: ChatRequest):
         return {"reply": f"Nemotron (OpenRouter) Error: {str(e)}"}
 
 # ----------------------
-# Qwen Endpoint (via OpenRouter)
+# GLM-4.5 Air Endpoint (via OpenRouter)
 # ----------------------
-@app.post("/qwen")
-async def qwen_chat(request: ChatRequest):
+@app.post("/glmair")
+async def glmair_chat(request: ChatRequest):
     try:
         messages = request.history + [{"role": "user", "content": request.message}]
         response = openai_client.chat.completions.create(
-            model="qwen/qwen2.5-7b-instruct",
+            model="z-ai/glm-4.5-air:free",
             messages=messages
         )
         reply = response.choices[0].message.content
         return {"reply": reply}
     except Exception as e:
-        return {"reply": f"Qwen Error: {str(e)}"}
+        return {"reply": f"GLM-4.5 Air Error: {str(e)}"}
         
 # ----------------------
 # Llama Endpoint (via OpenRouter)
