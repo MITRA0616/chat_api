@@ -84,6 +84,22 @@ async def nemotron_chat(request: ChatRequest):
         return {"reply": reply}
     except Exception as e:
         return {"reply": f"Nemotron (OpenRouter) Error: {str(e)}"}
+
+# ----------------------
+# Qwen Endpoint (via OpenRouter)
+# ----------------------
+@app.post("/qwen")
+async def qwen_chat(request: ChatRequest):
+    try:
+        messages = request.history + [{"role": "user", "content": request.message}]
+        response = openai_client.chat.completions.create(
+            model="qwen/qwen3-next-80b-a3b-instruct:free",
+            messages=messages
+        )
+        reply = response.choices[0].message.content
+        return {"reply": reply}
+    except Exception as e:
+        return {"reply": f"Qwen Error: {str(e)}"}
         
 # ----------------------
 # Deepseek Endpoint (via Ollama)
